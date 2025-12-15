@@ -14,6 +14,7 @@ const getResponsibleColor = (res: Responsible) => {
     case 'ALEX': return 'bg-orange-50 text-orange-700 border-orange-200';
     case 'PEDRO': return 'bg-cyan-50 text-cyan-700 border-cyan-200';
     case 'OLEK': return 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200';
+    case 'LAURA': return 'bg-indigo-50 text-indigo-700 border-indigo-200';
     case 'Sin Asignar': return 'bg-gray-50 text-gray-500 border-dashed border-gray-300';
     default: return 'bg-gray-100 text-gray-700';
   }

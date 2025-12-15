@@ -15,7 +15,7 @@ const incidentSchema: Schema = {
     subject: { type: Type.STRING, description: "A brief summary of the incident" },
     responsible: { 
       type: Type.STRING, 
-      enum: ['ALEX', 'PEDRO', 'OLEK', 'Sin Asignar'],
+      enum: ['ALEX', 'PEDRO', 'OLEK', 'LAURA', 'Sin Asignar'],
       description: "Infer the responsible person. Default to 'Sin Asignar' if unclear."
     },
     priority: { 

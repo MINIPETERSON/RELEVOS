@@ -1,6 +1,6 @@
 export type IncidentType = 'GSR' | 'CSR' | 'ASR' | 'Gestión de riesgos' | 'PRL' | 'Otro';
 
-export type Responsible = 'ALEX' | 'PEDRO' | 'OLEK' | 'Sin Asignar';
+export type Responsible = 'ALEX' | 'PEDRO' | 'OLEK' | 'LAURA' | 'Sin Asignar';
 
 export type Priority = 'Alta' | 'Media' | 'Baja';
 
@@ -19,11 +19,18 @@ export interface Incident {
   comments?: string; // New field for notes/comments
 }
 
+export interface Reminder {
+  id: string;
+  message: string;
+  datetime: string; // Start ISO string
+  endDatetime?: string; // End ISO string (optional)
+}
+
 export const INCIDENT_TYPES: IncidentType[] = [
   'GSR', 'CSR', 'ASR', 'Gestión de riesgos', 'PRL', 'Otro'
 ];
 
-export const RESPONSIBLES: Responsible[] = ['Sin Asignar', 'ALEX', 'PEDRO', 'OLEK'];
+export const RESPONSIBLES: Responsible[] = ['Sin Asignar', 'ALEX', 'PEDRO', 'OLEK', 'LAURA'];
 
 export const PRIORITIES: Priority[] = ['Alta', 'Media', 'Baja'];
 
