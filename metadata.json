@@ -1,4 +1,5 @@
 {
   "name": "Gestor de Incidentes Inteligente",
-  "description": "Una aplicación operativa para el seguimiento de incidentes con lógica condicional, gestión de responsables y prioridades visuales."
+  "description": "Una aplicación operativa para el seguimiento de incidentes con lógica condicional, gestión de responsables y prioridades visuales.",
+  "requestFramePermissions": []
 }

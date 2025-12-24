@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Trash2, Plus, X, Calendar as CalendarIcon, Check, MessageSquare, Save } from 'lucide-react';
+import { Trash2, Plus, X, Calendar as CalendarIcon, Check, MessageSquare, Save, RotateCcw, Info } from 'lucide-react';
 import { Incident, Priority, Responsible, Status, RESPONSIBLES, PRIORITIES, getAvailableActions, IncidentType } from '../types';
 
 interface IncidentTableProps {
   incidents: Incident[];
   isHistory?: boolean;
   onUpdateIncident?: (id: string, field: keyof Incident, value: any) => void;
+  onBatchUpdateIncident?: (id: string, updates: Partial<Incident>) => void;
   onDelete?: (id: string) => void;
 }
 
@@ -41,17 +42,21 @@ const IncidentTable: React.FC<IncidentTableProps> = ({
   incidents, 
   isHistory = false, 
   onUpdateIncident,
+  onBatchUpdateIncident,
   onDelete
 }) => {
   // Local state for the dropdown of actions to add
   const [addingActionToId, setAddingActionToId] = useState<string | null>(null);
   
-  // Local state for two-step deletion confirmation
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  // Local state for two-step confirmation
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   // Comments Modal State
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [tempComment, setTempComment] = useState('');
+
+  // Logs Modal State (for triple click)
+  const [viewingLogsId, setViewingLogsId] = useState<string | null>(null);
 
   if (incidents.length === 0) {
     return (
@@ -61,9 +66,6 @@ const IncidentTable: React.FC<IncidentTableProps> = ({
     );
   }
 
-  // Logic: 
-  // Name is editable if onUpdateIncident is present (Active & History).
-  // Other fields are editable ONLY if onUpdateIncident is present AND it is NOT history.
   const canEditName = !!onUpdateIncident;
   const canEditFields = !!onUpdateIncident && !isHistory;
 
@@ -75,9 +77,19 @@ const IncidentTable: React.FC<IncidentTableProps> = ({
   };
 
   const handleRemoveAction = (incident: Incident, actionToRemove: string) => {
-    if (!onUpdateIncident) return;
+    if (!onBatchUpdateIncident) return;
+    
     const newActions = incident.actions.filter(a => a !== actionToRemove);
-    onUpdateIncident(incident.id, 'actions', newActions);
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const date = new Date().toLocaleDateString();
+    const newLogEntry = `• ${incident.responsible} completó ${actionToRemove} (${date} ${time})`;
+    
+    const currentLogs = incident.logs || [];
+    
+    onBatchUpdateIncident(incident.id, {
+      actions: newActions,
+      logs: [...currentLogs, newLogEntry]
+    });
   };
 
   const handleOpenComments = (incident: Incident) => {
@@ -107,7 +119,7 @@ const IncidentTable: React.FC<IncidentTableProps> = ({
             <th className="px-6 py-4 w-32">Responsable</th>
             <th className="px-6 py-4 w-32">Prioridad</th>
             <th className="px-6 py-4 w-32">Estado</th>
-            {!isHistory && <th className="px-6 py-4 min-w-[120px] text-right"></th>}
+            <th className="px-6 py-4 min-w-[120px] text-right"></th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100 bg-white">
@@ -118,7 +130,6 @@ const IncidentTable: React.FC<IncidentTableProps> = ({
              return (
               <tr key={incident.id} className="hover:bg-gray-50 transition-colors group">
                 
-                {/* Name - Editable in both Active and History */}
                 <td className="px-6 py-4">
                    {canEditName ? (
                     <input
@@ -133,7 +144,6 @@ const IncidentTable: React.FC<IncidentTableProps> = ({
                    )}
                 </td>
 
-                {/* Date - Editable (Calendar) in Active, Text in History */}
                 <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap font-mono">
                   {canEditFields ? (
                      <div className="relative group/date">
@@ -149,14 +159,12 @@ const IncidentTable: React.FC<IncidentTableProps> = ({
                   )}
                 </td>
 
-                {/* Type */}
                 <td className="px-6 py-4">
                   <span className="inline-block px-2 py-1 text-xs font-semibold rounded bg-gray-100 text-gray-700">
                     {incident.type}
                   </span>
                 </td>
 
-                {/* Subject - Editable only in Active */}
                 <td className="px-6 py-4">
                   {canEditFields ? (
                     <input
@@ -170,7 +178,6 @@ const IncidentTable: React.FC<IncidentTableProps> = ({
                   )}
                 </td>
 
-                {/* COMMENTS SECTION - Only for Active */}
                 {!isHistory && (
                   <td className="px-6 py-4 text-center">
                     <button
@@ -183,7 +190,6 @@ const IncidentTable: React.FC<IncidentTableProps> = ({
                       title={incident.comments ? "Ver/Editar comentarios" : "Añadir comentario"}
                     >
                       <MessageSquare size={18} fill={incident.comments && incident.comments.trim().length > 0 ? "currentColor" : "none"} />
-                      {/* Optional Indicator dot */}
                       {incident.comments && incident.comments.trim().length > 0 && (
                         <span className="absolute -top-1 -right-1 flex h-3 w-3">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
@@ -194,7 +200,6 @@ const IncidentTable: React.FC<IncidentTableProps> = ({
                   </td>
                 )}
 
-                {/* Actions - Editable only in Active */}
                 <td className="px-6 py-4 relative">
                   <div className="flex flex-wrap gap-2 items-center">
                     {incident.actions.map(act => (
@@ -220,7 +225,6 @@ const IncidentTable: React.FC<IncidentTableProps> = ({
                           <Plus size={14} />
                         </button>
                         
-                        {/* Dropdown for adding actions */}
                         {addingActionToId === incident.id && (
                           <div className="absolute top-full left-0 mt-1 w-40 bg-white rounded-md shadow-lg border border-gray-200 z-50 py-1">
                             {unselectedActions.map(action => (
@@ -234,7 +238,6 @@ const IncidentTable: React.FC<IncidentTableProps> = ({
                             ))}
                           </div>
                         )}
-                        {/* Overlay to close dropdown */}
                         {addingActionToId === incident.id && (
                           <div 
                             className="fixed inset-0 z-40 bg-transparent" 
@@ -254,7 +257,6 @@ const IncidentTable: React.FC<IncidentTableProps> = ({
                   )}
                 </td>
 
-                {/* Responsible - Editable only in Active */}
                 <td className="px-6 py-4">
                   {canEditFields ? (
                     <select
@@ -267,13 +269,20 @@ const IncidentTable: React.FC<IncidentTableProps> = ({
                       ))}
                     </select>
                   ) : (
-                     <span className={`text-xs font-bold px-2.5 py-1 rounded border ${getResponsibleColor(incident.responsible)}`}>
+                     <span 
+                       onClick={(e) => {
+                         // Secret triple click activation preserved but totally hidden
+                         if (isHistory && e.detail === 3) {
+                           setViewingLogsId(incident.id);
+                         }
+                       }}
+                       className={`text-xs font-bold px-2.5 py-1 rounded border select-none ${getResponsibleColor(incident.responsible)}`}
+                     >
                         {incident.responsible}
                      </span>
                   )}
                 </td>
 
-                {/* Priority - Editable only in Active */}
                 <td className="px-6 py-4">
                   {canEditFields ? (
                     <select
@@ -293,7 +302,6 @@ const IncidentTable: React.FC<IncidentTableProps> = ({
                   )}
                 </td>
 
-                {/* Status - Editable only in Active */}
                 <td className="px-6 py-4">
                   {canEditFields ? (
                     <select
@@ -312,58 +320,55 @@ const IncidentTable: React.FC<IncidentTableProps> = ({
                   )}
                 </td>
 
-                {/* Delete Action (only active table) */}
-                {!isHistory && (
-                  <td className="px-6 py-4 text-right">
-                    {deleteConfirmId === incident.id ? (
-                      <div className="flex items-center justify-end gap-2 animate-fade-in">
-                         <button
-                           type="button"
-                           onClick={(e) => {
-                             e.stopPropagation();
-                             onDelete?.(incident.id);
-                             setDeleteConfirmId(null);
-                           }}
-                           className="text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-2 py-1 rounded text-xs font-bold transition-colors flex items-center gap-1 shadow-sm"
-                           title="Confirmar eliminación"
-                         >
-                           <Trash2 size={12} />
-                           Confirmar
-                         </button>
-                         <button
-                           type="button"
-                           onClick={(e) => {
-                             e.stopPropagation();
-                             setDeleteConfirmId(null);
-                           }}
-                           className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
-                           title="Cancelar"
-                         >
-                           <X size={14} />
-                         </button>
-                      </div>
-                    ) : (
+                <td className="px-6 py-4 text-right">
+                  {onDelete && confirmId === incident.id ? (
+                    <div className="flex items-center justify-end gap-2 animate-fade-in">
+                       <button
+                         type="button"
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           onDelete?.(incident.id);
+                           setConfirmId(null);
+                         }}
+                         className={`${isHistory ? 'text-blue-600 bg-blue-50 border-blue-200' : 'text-red-600 bg-red-50 border-red-200'} border px-2 py-1 rounded text-xs font-bold transition-colors flex items-center gap-1 shadow-sm`}
+                       >
+                         {isHistory ? <RotateCcw size={12} /> : <Trash2 size={12} />}
+                         {isHistory ? 'Restaurar' : 'Confirmar'}
+                       </button>
+                       <button
+                         type="button"
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           setConfirmId(null);
+                         }}
+                         className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                       >
+                         <X size={14} />
+                       </button>
+                    </div>
+                  ) : (
+                    onDelete && (
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setDeleteConfirmId(incident.id);
+                          setConfirmId(incident.id);
                         }}
-                        className="text-gray-300 hover:text-red-500 transition-colors p-2 rounded-md hover:bg-red-50"
-                        title="Eliminar Incidente"
+                        className={`transition-colors p-2 rounded-md ${isHistory ? 'text-gray-400 hover:text-blue-500 hover:bg-blue-50' : 'text-gray-300 hover:text-red-500 hover:bg-red-50'}`}
+                        title={isHistory ? "Subir a incidentes activos" : "Eliminar registro"}
                       >
-                        <Trash2 size={18} />
+                        {isHistory ? <RotateCcw size={18} /> : <Trash2 size={18} />}
                       </button>
-                    )}
-                  </td>
-                )}
+                    )
+                  )}
+                </td>
               </tr>
             );
           })}
         </tbody>
       </table>
 
-      {/* Comment Modal - Popup Overlay */}
+      {/* Comment Modal */}
       {editingCommentId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
@@ -372,41 +377,68 @@ const IncidentTable: React.FC<IncidentTableProps> = ({
                  <MessageSquare size={20} className="text-blue-600" />
                  Comentarios del Incidente
                </h3>
-               <button 
-                 onClick={() => setEditingCommentId(null)}
-                 className="text-gray-400 hover:text-gray-600 transition-colors"
-               >
+               <button onClick={() => setEditingCommentId(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
                  <X size={20} />
                </button>
              </div>
              <div className="p-6">
-               <label className="block text-sm font-medium text-gray-700 mb-2">
-                 Notas internas y observaciones:
-               </label>
                <textarea
                  autoFocus
                  value={tempComment}
                  onChange={(e) => setTempComment(e.target.value)}
-                 className="w-full h-40 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm text-gray-900 bg-white leading-relaxed shadow-sm"
-                 placeholder="Escribe aquí los detalles, avances o recordatorios sobre este incidente..."
+                 className="w-full h-40 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 resize-none text-sm text-gray-900 bg-white leading-relaxed"
+                 placeholder="Escribe aquí los detalles..."
                ></textarea>
                <div className="flex justify-end gap-3 mt-6">
-                 <button
-                   onClick={() => setEditingCommentId(null)}
-                   className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors"
-                 >
+                 <button onClick={() => setEditingCommentId(null)} className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg">
                    Cancelar
                  </button>
-                 <button
-                   onClick={handleSaveComment}
-                   className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 flex items-center gap-2 shadow-sm transition-all hover:shadow-md"
-                 >
+                 <button onClick={handleSaveComment} className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 flex items-center gap-2 shadow-sm transition-all hover:shadow-md">
                    <Save size={18} />
-                   Guardar Comentario
+                   Guardar
                  </button>
                </div>
              </div>
           </div>
+        </div>
+      )}
+
+      {/* Traceability Logs Modal (Secret triple click) */}
+      {viewingLogsId && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border border-blue-100">
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-blue-50">
+                <h3 className="text-lg font-bold text-blue-900 flex items-center gap-2">
+                  <Info size={20} className="text-blue-600" />
+                  Trazabilidad de Acciones
+                </h3>
+                <button onClick={() => setViewingLogsId(null)} className="text-blue-400 hover:text-blue-600 transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-6 bg-white">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Registro Histórico de Operativa:</p>
+                <div className="space-y-3 max-h-60 overflow-y-auto">
+                   {incidents.find(i => i.id === viewingLogsId)?.logs && incidents.find(i => i.id === viewingLogsId)?.logs?.length! > 0 ? (
+                     incidents.find(i => i.id === viewingLogsId)?.logs?.map((log, idx) => (
+                       <div key={idx} className="p-3 bg-gray-50 rounded-lg border border-gray-100 text-sm text-gray-700 font-medium">
+                          {log}
+                       </div>
+                     ))
+                   ) : (
+                     <div className="text-center py-6 text-gray-400 italic text-sm">
+                        No hay registros de acciones completadas manualmente para este incidente.
+                     </div>
+                   )}
+                </div>
+                <button 
+                  onClick={() => setViewingLogsId(null)}
+                  className="w-full mt-6 py-2.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-md"
+                >
+                  Cerrar
+                </button>
+              </div>
+           </div>
         </div>
       )}
     </div>

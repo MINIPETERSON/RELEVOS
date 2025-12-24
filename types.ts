@@ -8,7 +8,7 @@ export type Status = 'Pendiente' | 'En curso' | 'Completado';
 
 export interface Incident {
   id: string;
-  name: string; // New field: Nombre del Incidente
+  name: string;
   date: string;
   type: IncidentType;
   subject: string;
@@ -16,7 +16,8 @@ export interface Incident {
   responsible: Responsible;
   priority: Priority;
   status: Status;
-  comments?: string; // New field for notes/comments
+  comments?: string;
+  logs?: string[]; // New field for internal tracking of completed actions
 }
 
 export interface Reminder {
@@ -41,9 +42,11 @@ export const getAvailableActions = (type: IncidentType): string[] => {
   if (type === 'PRL') {
     return ['Volante mutua', '5.1', '5.3', 'R39', 'OD'];
   }
+  
   if (type === 'Gestión de riesgos') {
     return [];
   }
-  // All others
-  return ['R05', 'R39', 'R06', 'OD'];
+  
+  const baseActions = ['R05', 'R39', 'R06', 'OD'];
+  return [...baseActions, 'PO13', 'R12'];
 };

@@ -16,7 +16,8 @@ const INITIAL_INCIDENTS: Incident[] = [
     responsible: 'PEDRO',
     priority: 'Alta',
     status: 'Pendiente',
-    comments: 'Pendiente confirmar fecha exacta con proveedor.'
+    comments: 'Pendiente confirmar fecha exacta con proveedor.',
+    logs: []
   }
 ];
 
@@ -125,6 +126,7 @@ const App: React.FC = () => {
       ...newIncident,
       id: generateId(),
       comments: '', 
+      logs: []
     };
     setActiveIncidents(prev => [incident, ...prev]);
   };
@@ -132,6 +134,13 @@ const App: React.FC = () => {
   const handleUpdateIncident = (id: string, field: keyof Incident, value: any) => {
     setActiveIncidents(prev => prev.map(inc => 
       inc.id === id ? { ...inc, [field]: value } : inc
+    ));
+  };
+
+  // Support for multiple field updates (useful for logs + actions)
+  const handleBatchUpdateIncident = (id: string, updates: Partial<Incident>) => {
+    setActiveIncidents(prev => prev.map(inc => 
+      inc.id === id ? { ...inc, ...updates } : inc
     ));
   };
 
@@ -143,6 +152,14 @@ const App: React.FC = () => {
 
   const handleDelete = (id: string) => {
     setActiveIncidents(prev => prev.filter(inc => inc.id !== id));
+  };
+
+  const handleRestoreFromHistory = (id: string) => {
+    const incidentToRestore = historyIncidents.find(inc => inc.id === id);
+    if (incidentToRestore) {
+      setHistoryIncidents(prev => prev.filter(inc => inc.id !== id));
+      setActiveIncidents(prev => [{ ...incidentToRestore, status: 'En curso' }, ...prev]);
+    }
   };
 
   const handleMoveCompleted = () => {
@@ -447,6 +464,7 @@ const App: React.FC = () => {
               <IncidentTable 
                 incidents={displayedActiveIncidents}
                 onUpdateIncident={handleUpdateIncident}
+                onBatchUpdateIncident={handleBatchUpdateIncident}
                 onDelete={handleDelete}
               />
            </div>
@@ -492,6 +510,7 @@ const App: React.FC = () => {
                 incidents={getDisplayedHistory()}
                 isHistory={true}
                 onUpdateIncident={handleUpdateHistoryIncident}
+                onDelete={handleRestoreFromHistory}
               />
            </div>
         </div>
